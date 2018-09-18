@@ -1,15 +1,15 @@
-Hawk Authentication for Rust
-============================
+Hawk Authentication for Hyper
+=============================
 
-This is a Rust implementation of [Hawk](https://github.com/hueniverse/hawk).
+This is a Rust implementation of (Hawk)[https://github.com/hueniverse/hawk] for use with (Hyper)[http://hyper.rs/].
 
-It consists of two crates:
+## TODO
 
- * [`hawk`](https://docs.rs/hawk/) - core protocol implementation
- * `hyper-hawk` (not released yet) - specialization for Hyper
+### For release
 
-## Project Status
+* Support validating nonces via a callback
+* Test interoperability by verifying bewit
 
-This project is mostly a way for me (@djmitche) to learn Rust.
-As such, it is not feature-complete and I do not dedicate a substantial amount of time to it.
-If you are using Hawk with Rust in a production setting, please consider becoming a maintainer of these crates.
+### Later
+
+* Support adjusting for clock skew (send clock from server, observe and adjust on client)

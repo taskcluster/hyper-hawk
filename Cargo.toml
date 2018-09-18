@@ -18,7 +18,7 @@ url = "1.4.0"
 hyper = "^0.11"
 rustc-serialize = "^0.3.15"
 time = "^0.1.32"
-hawk = { path = "../hawk" }
+hawk = "^1.0.4"
 
 [dev-dependencies]
 futures = "0.1.14"
