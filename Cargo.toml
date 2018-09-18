@@ -4,9 +4,9 @@ version = "0.1.0"
 authors = ["Jonas Finnemann Jensen <jopsen@gmail.com>", "Dustin J. Mitchell <dustin@mozilla.com>"]
 license = "MPL-2.0"
 readme = "README.md"
-repository = "https://github.com/taskcluster/rust-hawk"
-documentation = "https://github.com/taskcluster/rust-hawk"
-homepage = "https://github.com/taskcluster/rust-hawk"
+repository = "https://github.com/taskcluster/hyper-hawk"
+documentation = "https://github.com/taskcluster/hyper-hawk"
+homepage = "https://github.com/taskcluster/hyper-hawk"
 description = "Hawk Implementation for rust using Hyper"
 
 [features]
