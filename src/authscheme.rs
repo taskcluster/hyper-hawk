@@ -1,8 +1,8 @@
-use hyper::header::Scheme;
-use std::str::FromStr;
-use std::fmt;
 use hawk::Header;
+use hyper::header::Scheme;
+use std::fmt;
 use std::ops::Deref;
+use std::str::FromStr;
 
 /// `HawkScheme` is a Hyper Scheme implementation for Hawk Authorization headers.
 ///

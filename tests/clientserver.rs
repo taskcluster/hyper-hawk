@@ -1,18 +1,18 @@
-extern crate time;
+extern crate futures;
 extern crate hawk;
 extern crate hyper;
 extern crate hyper_hawk;
-extern crate url;
-extern crate futures;
+extern crate time;
 extern crate tokio_core;
+extern crate url;
 
-use hawk::{RequestBuilder, Credentials, Key, SHA256, PayloadHasher};
-use hyper_hawk::{HawkScheme, ServerAuthorization};
-use hyper::{Client, Method, Body, Request, Response};
-use hyper::header::{ContentLength, Authorization};
-use hyper::server::{Http, Service};
-use futures::{Future, Stream, Async, Poll};
 use futures::stream::Concat2;
+use futures::{Async, Future, Poll, Stream};
+use hawk::{Credentials, Key, PayloadHasher, RequestBuilder, SHA256};
+use hyper::header::{Authorization, ContentLength};
+use hyper::server::{Http, Service};
+use hyper::{Body, Client, Method, Request, Response};
+use hyper_hawk::{HawkScheme, ServerAuthorization};
 use url::Url;
 
 // It's impossible to have Service::Future be a Map type with a closure, because it is unsigned. Or
@@ -57,7 +57,8 @@ impl Future for ServerValidatorFuture {
 
                 let body = b"OK";
                 let payload_hash;
-                let mut resp_builder = request.make_response_builder(&self.header)
+                let mut resp_builder = request
+                    .make_response_builder(&self.header)
                     .ext("server-ext");
                 if self.send_hash {
                     payload_hash = PayloadHasher::hash(b"text/plain", &SHA256, body);
@@ -65,10 +66,12 @@ impl Future for ServerValidatorFuture {
                 }
                 let server_hdr = resp_builder.response().make_header(&key).unwrap();
 
-                Ok(Async::Ready(Response::new()
-                    .with_header(ContentLength(body.len() as u64))
-                    .with_header(ServerAuthorization(HawkScheme(server_hdr)))
-                    .with_body(body.as_ref())))
+                Ok(Async::Ready(
+                    Response::new()
+                        .with_header(ContentLength(body.len() as u64))
+                        .with_header(ServerAuthorization(HawkScheme(server_hdr)))
+                        .with_body(body.as_ref()),
+                ))
             }
 
             Ok(Async::NotReady) => Ok(Async::NotReady),
@@ -92,7 +95,11 @@ impl Service for TestService {
     fn call(&self, req: Request) -> Self::Future {
         // get the Authorization header the client sent
         ServerValidatorFuture {
-            header: req.headers().get::<Authorization<HawkScheme>>().unwrap().clone(),
+            header: req
+                .headers()
+                .get::<Authorization<HawkScheme>>()
+                .unwrap()
+                .clone(),
             require_hash: self.require_hash,
             send_hash: self.send_hash,
             body_stream: req.body().concat2(),
@@ -100,11 +107,12 @@ impl Service for TestService {
     }
 }
 
-fn run_client_server(client_send_hash: bool,
-                     server_require_hash: bool,
-                     server_send_hash: bool,
-                     client_require_hash: bool) {
-
+fn run_client_server(
+    client_send_hash: bool,
+    server_require_hash: bool,
+    server_send_hash: bool,
+    client_require_hash: bool,
+) {
     // Hyper, really Tokio, bizarrely creates a new Service for each connection
     let service_factory = move || {
         Ok(TestService {
@@ -135,11 +143,15 @@ fn run_client_server(client_send_hash: bool,
     let hawk_req = req_builder.request();
 
     // build a hyper::Request for this request (using the real port)
-    let mut req =
-        Request::new(Method::Post,
-                     format!("http://127.0.0.1:{}", local_address.port()).parse().unwrap());
+    let mut req = Request::new(
+        Method::Post,
+        format!("http://127.0.0.1:{}", local_address.port())
+            .parse()
+            .unwrap(),
+    );
     let req_header = hawk_req.make_header(&credentials).unwrap();
-    req.headers_mut().set(Authorization(HawkScheme(req_header.clone())));
+    req.headers_mut()
+        .set(Authorization(HawkScheme(req_header.clone())));
     req.set_body(body);
     println!("{:?}", req);
 
@@ -147,12 +159,16 @@ fn run_client_server(client_send_hash: bool,
     // https://github.com/hyperium/hyper/issues/1075
     let handle = server.handle();
     let client = Client::new(&handle);
-    let client_fut = client.request(req)
+    let client_fut = client
+        .request(req)
         .and_then(|res| {
             println!("{:?}", res);
             assert_eq!(res.status(), hyper::Ok);
-            let server_hdr =
-                res.headers().get::<ServerAuthorization<HawkScheme>>().unwrap().clone();
+            let server_hdr = res
+                .headers()
+                .get::<ServerAuthorization<HawkScheme>>()
+                .unwrap()
+                .clone();
             res.body().concat2().map(|body| (body, server_hdr))
         })
         .map(|(body, server_hdr)| {

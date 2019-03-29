@@ -1,9 +1,9 @@
-use std::fmt;
-use std::any::Any;
-use std::str::FromStr;
-use hyper::Result;
 use hyper::header;
+use hyper::Result;
+use std::any::Any;
+use std::fmt;
 use std::ops::{Deref, DerefMut};
+use std::str::FromStr;
 
 /// 'Server-Authorization' header, as indicated in the canonical Hawk implementation.
 ///
@@ -28,7 +28,8 @@ impl<S: header::Scheme> DerefMut for ServerAuthorization<S> {
 }
 
 impl<S: header::Scheme + Any> header::Header for ServerAuthorization<S>
-    where <S as FromStr>::Err: 'static
+where
+    <S as FromStr>::Err: 'static,
 {
     fn header_name() -> &'static str {
         "Server-Authorization"
