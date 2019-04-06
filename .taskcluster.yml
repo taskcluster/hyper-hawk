@@ -21,7 +21,7 @@ tasks:
           cd repo &&
           git config advice.detachedHead false &&
           git checkout {{event.head.sha}} &&
-          echo $PATH &&
+          ( cd tests/node; npm install ) &&
           rustup run stable cargo test &&
           rustup run nightly cargo test &&
           rustup run nightly cargo clippy -- -D clippy
