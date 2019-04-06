@@ -8,6 +8,7 @@ repository = "https://github.com/taskcluster/hyper-hawk"
 documentation = "https://github.com/taskcluster/hyper-hawk"
 homepage = "https://github.com/taskcluster/hyper-hawk"
 description = "Hawk Implementation for rust using Hyper"
+edition = "2018"
 
 [features]
 # skip the tests that require node
