@@ -1,22 +1,22 @@
-extern crate time;
+extern crate futures;
 extern crate hawk;
 extern crate hyper;
 extern crate hyper_hawk;
-extern crate url;
-extern crate futures;
+extern crate time;
 extern crate tokio_core;
+extern crate url;
 
-use std::process::{Command, Child};
-use hawk::{RequestBuilder, Credentials, Key, SHA256, PayloadHasher};
+use futures::{Future, Stream};
+use hawk::{Credentials, Key, PayloadHasher, RequestBuilder, SHA256};
+use hyper::{header, Client, Method, Request};
+use hyper_hawk::{HawkScheme, ServerAuthorization};
 use std::io::Read;
 use std::net::TcpListener;
 use std::path::Path;
-use hyper_hawk::{HawkScheme, ServerAuthorization};
-use hyper::{Client, Request, Method, header};
+use std::process::{Child, Command};
 use std::str::FromStr;
-use url::Url;
-use futures::{Future, Stream};
 use tokio_core::reactor::Core;
+use url::Url;
 
 fn start_node_server() -> (Child, u16) {
     let listener = TcpListener::bind(format!("127.0.0.1:{}", 0)).unwrap();
@@ -25,8 +25,10 @@ fn start_node_server() -> (Child, u16) {
     // check for `node_modules' first
     let path = Path::new("tests/node/node_modules");
     if !path.is_dir() {
-        panic!("Run `yarn` or `npm install` in tests/node, or test with --feautures \
-                no-interoperability");
+        panic!(
+            "Run `yarn` or `npm install` in tests/node, or test with --features \
+             no-interoperability"
+        );
     }
 
     let child = Command::new("node")
@@ -80,7 +82,8 @@ fn client_with_header() {
     // build a hyper::Request
     let mut req = Request::new(Method::Post, url.as_str().parse().unwrap());
     let req_header = hawk_req.make_header(&credentials).unwrap();
-    req.headers_mut().set(header::Authorization(HawkScheme(req_header.clone())));
+    req.headers_mut()
+        .set(header::Authorization(HawkScheme(req_header.clone())));
     req.headers_mut().set(header::ContentType::plaintext());
     req.set_body(body);
     println!("{:?}", req);
@@ -89,11 +92,15 @@ fn client_with_header() {
     let handle = core.handle();
 
     let client = Client::new(&handle);
-    let work = client.request(req)
+    let work = client
+        .request(req)
         .and_then(|res| {
             assert_eq!(res.status(), hyper::Ok);
-            let server_hdr =
-                res.headers().get::<ServerAuthorization<HawkScheme>>().unwrap().clone();
+            let server_hdr = res
+                .headers()
+                .get::<ServerAuthorization<HawkScheme>>()
+                .unwrap()
+                .clone();
             res.body().concat2().map(|body| (body, server_hdr))
         })
         .map(|(body, server_hdr)| {
@@ -102,7 +109,8 @@ fn client_with_header() {
 
             // validate server's signature
             let payload_hash = PayloadHasher::hash(b"text/plain", &SHA256, body.as_ref());
-            let response = hawk_req.make_response_builder(&req_header)
+            let response = hawk_req
+                .make_response_builder(&req_header)
                 .hash(&payload_hash[..])
                 .response();
             if !response.validate_header(&server_hdr, &credentials.key) {
@@ -134,7 +142,8 @@ fn client_with_bewit() {
         .ext("ext-content")
         .request();
 
-    let bewit = hawk_req.make_bewit(&credentials, time::Duration::minutes(1))
+    let bewit = hawk_req
+        .make_bewit(&credentials, time::Duration::minutes(1))
         .unwrap();
     let mut url = url.clone();
     url.set_query(Some(&format!("bewit={}", bewit.to_str())));
@@ -143,14 +152,13 @@ fn client_with_bewit() {
     let handle = core.handle();
 
     let client = Client::new(&handle);
-    let work = client.get(url.as_str().parse().unwrap())
-        .and_then(|res| {
-            assert_eq!(res.status(), hyper::Ok);
+    let work = client.get(url.as_str().parse().unwrap()).and_then(|res| {
+        assert_eq!(res.status(), hyper::Ok);
 
-            res.body().concat2().map(|body| {
-                assert_eq!(body.as_ref(), b"Hello Steve ext-content");
-            })
-        });
+        res.body().concat2().map(|body| {
+            assert_eq!(body.as_ref(), b"Hello Steve ext-content");
+        })
+    });
 
     core.run(work).unwrap();
 
