@@ -11,7 +11,7 @@ extern crate time;
 extern crate url;
 
 mod serverauth;
-pub use serverauth::ServerAuthorization;
+pub use crate::serverauth::ServerAuthorization;
 
 mod authscheme;
-pub use authscheme::HawkScheme;
+pub use crate::authscheme::HawkScheme;

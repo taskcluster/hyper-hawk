@@ -52,7 +52,7 @@ impl<S: header::Scheme + Any> fmt::Display for ServerAuthorization<S> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         // copied from hyper's src/header/common/authorization.rs
         if let Some(scheme) = <S as header::Scheme>::scheme() {
-            try!(write!(f, "{} ", scheme))
+            write!(f, "{} ", scheme)?
         };
         self.0.fmt_scheme(f)
     }
