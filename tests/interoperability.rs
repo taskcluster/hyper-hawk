@@ -1,13 +1,6 @@
-extern crate futures;
-extern crate hawk;
-extern crate hyper;
-extern crate hyper_hawk;
-extern crate time;
-extern crate tokio_core;
-extern crate url;
-
 use futures::{Future, Stream};
 use hawk::{Credentials, Key, PayloadHasher, RequestBuilder, SHA256};
+use hyper;
 use hyper::{header, Client, Method, Request};
 use hyper_hawk::{HawkScheme, ServerAuthorization};
 use std::io::Read;
@@ -15,6 +8,7 @@ use std::net::TcpListener;
 use std::path::Path;
 use std::process::{Child, Command};
 use std::str::FromStr;
+use time;
 use tokio_core::reactor::Core;
 use url::Url;
 

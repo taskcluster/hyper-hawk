@@ -34,7 +34,7 @@ impl Scheme for HawkScheme {
         Some("Hawk")
     }
 
-    fn fmt_scheme(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt_scheme(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.0.fmt_header(f)
     }
 }

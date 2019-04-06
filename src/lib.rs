@@ -4,12 +4,6 @@
 //! [HawkScheme] [Authorization](hyper::header::Authorization) scheme and a new (nonstandard)
 //! [ServerAuthorization] header.
 
-extern crate hyper;
-extern crate hawk;
-extern crate rustc_serialize;
-extern crate time;
-extern crate url;
-
 mod serverauth;
 pub use crate::serverauth::ServerAuthorization;
 

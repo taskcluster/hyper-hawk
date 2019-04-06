@@ -43,13 +43,13 @@ impl<S: header::Scheme + Any> header::Header for ServerAuthorization<S>
         }
     }
 
-    fn fmt_header(&self, f: &mut header::Formatter) -> fmt::Result {
+    fn fmt_header(&self, f: &mut header::Formatter<'_, '_>) -> fmt::Result {
         f.fmt_line(self)
     }
 }
 
 impl<S: header::Scheme + Any> fmt::Display for ServerAuthorization<S> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // copied from hyper's src/header/common/authorization.rs
         if let Some(scheme) = <S as header::Scheme>::scheme() {
             write!(f, "{} ", scheme)?
