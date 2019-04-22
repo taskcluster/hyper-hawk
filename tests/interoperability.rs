@@ -8,7 +8,7 @@ use std::net::TcpListener;
 use std::path::Path;
 use std::process::{Child, Command};
 use std::str::FromStr;
-use time;
+use std::time::{Duration, SystemTime};
 use tokio_core::reactor::Core;
 use url::Url;
 
@@ -137,7 +137,7 @@ fn client_with_bewit() {
         .request();
 
     let bewit = hawk_req
-        .make_bewit(&credentials, time::Duration::minutes(1))
+        .make_bewit(&credentials, SystemTime::now() + Duration::from_secs(60))
         .unwrap();
     let mut url = url.clone();
     url.set_query(Some(&format!("bewit={}", bewit.to_str())));

@@ -6,7 +6,7 @@ use hyper::header::{Authorization, ContentLength};
 use hyper::server::{Http, Service};
 use hyper::{Body, Client, Method, Request, Response};
 use hyper_hawk::{HawkScheme, ServerAuthorization};
-use time;
+use std::time::Duration;
 use url::Url;
 
 // It's impossible to have Service::Future be a Map type with a closure, because it is unsigned. Or
@@ -45,7 +45,7 @@ impl Future for ServerValidatorFuture {
                 assert_eq!(self.header.id, Some("test-client".to_string()));
                 assert_eq!(self.header.ext, None);
                 let key = Key::new(vec![1u8; 32], &SHA256);
-                if !request.validate_header(&self.header, &key, time::Duration::minutes(1)) {
+                if !request.validate_header(&self.header, &key, Duration::from_secs(60)) {
                     panic!("header validation failed");
                 }
 

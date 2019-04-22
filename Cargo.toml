@@ -18,8 +18,7 @@ no-interoperability = []
 url = "1.4.0"
 hyper = "^0.11"
 rustc-serialize = "^0.3.15"
-time = "^0.1.32"
-hawk = "^1.0.4"
+hawk = "^2.0.0"
 
 [dev-dependencies]
 futures = "0.1.14"
