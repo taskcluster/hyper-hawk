@@ -1,15 +1,13 @@
-use futures::{Future, Stream};
-use hawk::{Credentials, Key, PayloadHasher, RequestBuilder, SHA256};
+use hawk::{Credentials, Header, Key, PayloadHasher, RequestBuilder, ResponseBuilder, SHA256};
 use hyper;
-use hyper::{header, Client, Method, Request};
-use hyper_hawk::{HawkScheme, ServerAuthorization};
+use hyper::rt::{self, Future, Stream};
+use hyper::{header, Body, Client, Request, StatusCode};
+//use hyper_hawk::{HawkScheme, ServerAuthorization};
 use std::io::Read;
 use std::net::TcpListener;
 use std::path::Path;
 use std::process::{Child, Command};
 use std::str::FromStr;
-use std::time::{Duration, SystemTime};
-use tokio_core::reactor::Core;
 use url::Url;
 
 fn start_node_server() -> (Child, u16) {
@@ -60,70 +58,88 @@ fn make_credentials() -> Credentials {
 #[test]
 fn client_with_header() {
     let (mut child, port) = start_node_server();
+    let mut test_passed = false;
 
-    let credentials = make_credentials();
-    let url = Url::parse(&format!("http://localhost:{}/resource", port)).unwrap();
-    let body = "foo=bar";
+    // NOTE: this closure is run in another thread, so assert! and friends are right out.
+    // consider using tokio current_thread runtime with block_on
+    rt::run(rt::lazy(move || {
+        let credentials = make_credentials();
+        let url = Url::parse(&format!("http://localhost:{}/resource", port)).unwrap();
+        let body = "foo=bar";
 
-    // build a hawk::Request
-    let payload_hash = PayloadHasher::hash(b"text/plain", &SHA256, body.as_bytes());
-    let hawk_req = RequestBuilder::from_url("POST", &url)
-        .unwrap()
-        .hash(&payload_hash[..])
-        .ext("ext-content")
-        .request();
+        // build a hawk::Request
+        let payload_hash = PayloadHasher::hash(b"text/plain", &SHA256, body.as_bytes());
+        let hawk_req = RequestBuilder::from_url("POST", &url)
+            .unwrap()
+            .hash(&payload_hash[..])
+            .ext("ext-content")
+            .request();
 
-    // build a hyper::Request
-    let mut req = Request::new(Method::Post, url.as_str().parse().unwrap());
-    let req_header = hawk_req.make_header(&credentials).unwrap();
-    req.headers_mut()
-        .set(header::Authorization(HawkScheme(req_header.clone())));
-    req.headers_mut().set(header::ContentType::plaintext());
-    req.set_body(body);
-    println!("{:?}", req);
+        // build a hyper::Request
+        let req_header = hawk_req.make_header(&credentials).unwrap();
+        let req = Request::builder()
+            .method("POST")
+            .uri(url.as_str())
+            // TODO: implement something to convert this to HeaderValue?
+            .header(header::AUTHORIZATION, format!("Hawk {}", req_header))
+            .header(header::CONTENT_TYPE, "text/plain")
+            .body(Body::from(body))
+            .unwrap();
+        println!("Request: {:?}", req);
 
-    let mut core = Core::new().unwrap();
-    let handle = core.handle();
-
-    let client = Client::new(&handle);
-    let work = client
-        .request(req)
-        .and_then(|res| {
-            assert_eq!(res.status(), hyper::Ok);
-            let server_hdr = res
-                .headers()
-                .get::<ServerAuthorization<HawkScheme>>()
-                .unwrap()
-                .clone();
-            res.body().concat2().map(|body| (body, server_hdr))
-        })
-        .map(|(body, server_hdr)| {
-            // check we got the expected body
-            assert_eq!(body.as_ref(), b"Hello Steve ext-content");
-
-            // validate server's signature
-            let payload_hash = PayloadHasher::hash(b"text/plain", &SHA256, body.as_ref());
-            let response = hawk_req
-                .make_response_builder(&req_header)
-                .hash(&payload_hash[..])
-                .response();
-            if !response.validate_header(&server_hdr, &credentials.key) {
-                panic!("authentication of response header failed");
-            }
-        });
-
-    core.run(work).unwrap();
-
-    // drop everything to allow the client connection to close and thus the Node server
-    // to exit.  Curiously, just dropping client is not sufficient - the core holds the
-    // socket open.
-    drop(client);
-    drop(handle);
-    drop(core);
+        let client = Client::new();
+        client
+            .request(req)
+            .and_then(move |res| {
+                println!("Response: {}", res.status());
+                println!("Headers: {:#?}", res.headers());
+                // TODO: check StatusCode
+                let sa_header = res
+                    .headers()
+                    .get("server-authorization")
+                    .unwrap()
+                    .to_str()
+                    .unwrap()
+                    .to_string();
+                let hasher = PayloadHasher::new(b"text/plain", &SHA256);
+                res.into_body()
+                    .fold(
+                        hasher,
+                        |mut hasher, chunk| -> Result<PayloadHasher, hyper::Error> {
+                            hasher.update(&chunk);
+                            Ok(hasher)
+                        },
+                    )
+                    .map(move |hasher| {
+                        let hash = hasher.finish();
+                        println!("hash: {:?}", hash);
+                        println!("s-a header: {}", sa_header);
+                        // TODO: check body content too?
+                        // TODO: hm, can't access request here
+                        let response = ResponseBuilder::from_request_header(
+                            &req_header,
+                            "POST",
+                            "localhostXXXXXXXXXXXXXXX",
+                            port,
+                            "/resource",
+                        )
+                        .hash(&hash[..])
+                        .response();
+                        let server_header = Header::from_str(&sa_header[5..]).unwrap();
+                        test_passed = response.validate_header(&server_header, &credentials.key);
+                    })
+            })
+            .map_err(|err| {
+                println!("Error {}", err);
+            })
+    }));
 
     child.wait().expect("Failure waiting for child");
+
+    assert!(test_passed, "test should have passed");
 }
 
+/*
 #[cfg_attr(feature = "no-interoperability", ignore)]
 #[test]
 fn client_with_bewit() {
@@ -165,3 +181,4 @@ fn client_with_bewit() {
 
     child.wait().expect("Failure waiting for child");
 }
+*/

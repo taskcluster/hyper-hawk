@@ -4,8 +4,5 @@
 //! [HawkScheme] [Authorization](hyper::header::Authorization) scheme and a new (nonstandard)
 //! [ServerAuthorization] header.
 
-mod serverauth;
-pub use crate::serverauth::ServerAuthorization;
-
-mod authscheme;
-pub use crate::authscheme::HawkScheme;
+//mod authscheme;
+//pub use crate::authscheme::HawkScheme;
